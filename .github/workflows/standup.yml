@@ -1,0 +1,32 @@
+name: Standup presenter
+
+on:
+  schedule:
+    # GitHub cron is UTC. These two lines cover 10:00 Prague time in summer (CEST)
+    # and winter (CET); the step below skips whichever one is not 10:xx locally.
+    - cron: '0 8 * * 1-4'
+    - cron: '0 9 * * 1-4'
+  workflow_dispatch: {}   # lets you press "Run workflow" manually
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Only continue at 10:xx Prague time
+        id: gate
+        run: |
+          hour=$(TZ=Europe/Prague date +%H)
+          if [ "$hour" = "10" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.go == 'true'
+        with:
+          node-version: 22
+      - name: Pick presenter and post to Slack
+        if: steps.gate.outputs.go == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TEAM_JSON: ${{ secrets.TEAM_JSON }}
+        run: node standup.mjs

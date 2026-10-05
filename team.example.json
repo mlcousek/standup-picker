@@ -1,0 +1,6 @@
+{
+  "members": [
+    { "name": "Alice", "slackId": "U0000000001" },
+    { "name": "Bob", "slackId": "U0000000002" }
+  ]
+}
