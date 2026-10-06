@@ -2,23 +2,46 @@ name: Standup presenter
 
 on:
   schedule:
-    # GitHub cron is UTC. These two lines cover 10:00 Prague time in summer (CEST)
-    # and winter (CET); the step below skips whichever one is not 10:xx locally.
-    - cron: '0 8 * * 1-4'
-    - cron: '0 9 * * 1-4'
-  workflow_dispatch: {}   # lets you press "Run workflow" manually
+    # GitHub cron is UTC and GitHub often starts scheduled jobs late (sometimes hours),
+    # especially on the hour. So: off-peak minutes, several attempts, and the gate below
+    # accepts any start between 10:00 and 13:00 Prague time. The first attempt of the day
+    # posts; a tag "posted-YYYY-MM-DD" makes sure later attempts do nothing.
+    - cron: '7 8 * * 1-4'
+    - cron: '37 8 * * 1-4'
+    - cron: '7 9 * * 1-4'
+    - cron: '37 9 * * 1-4'
+    - cron: '7 10 * * 1-4'
+    - cron: '37 10 * * 1-4'
+    - cron: '7 11 * * 1-4'
+  workflow_dispatch: {}   # lets you press "Run workflow" manually (always posts)
+
+permissions:
+  contents: write         # needed only to push the daily "posted" tag
 
 jobs:
   pick:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Only continue at 10:xx Prague time
+      - name: Decide whether to post
         id: gate
         run: |
-          hour=$(TZ=Europe/Prague date +%H)
-          if [ "$hour" = "10" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "go=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          hour=$(TZ=Europe/Prague date +%H)
+          today=$(TZ=Europe/Prague date +%F)
+          if [ "$hour" -lt 10 ] || [ "$hour" -ge 13 ]; then
+            echo "Prague hour is $hour, outside 10-13, skipping"
+            exit 0
+          fi
+          # Claim today's slot. Pushing a tag fails if it already exists, so only one run wins.
+          git tag "posted-$today"
+          if git push origin "posted-$today"; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Already posted today, skipping"
           fi
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.go == 'true'
