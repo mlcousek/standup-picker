@@ -5,4 +5,4 @@ workers_dev = false
 
 [triggers]
 # UTC. 10:00 Prague = 08:00 UTC (summer, CEST) or 09:00 UTC (winter, CET); the code skips the wrong one.
-crons = ["0 8 * * 1-4", "0 9 * * 1-4"]
+crons = ["0 8 * * MON-THU", "0 9 * * MON-THU"]

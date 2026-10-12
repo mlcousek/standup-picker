@@ -4,6 +4,9 @@
 
 const pragueHour = (date) =>
   Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Prague', hour: '2-digit', hourCycle: 'h23' }).format(date));
+const pragueWeekday = (date) =>
+  new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Prague', weekday: 'short' }).format(date);
+const POST_DAYS = ['Mon', 'Tue', 'Wed', 'Thu'];
 
 export async function pickAndPost(env) {
   const { members } = JSON.parse(env.TEAM_JSON);
@@ -27,12 +30,14 @@ export async function pickAndPost(env) {
 }
 
 export default {
-  // Two crons (08:00 and 09:00 UTC, Mon-Thu) cover summer and winter time;
+  // Two crons (08:00 and 09:00 UTC, MON-THU; Cloudflare numbers days 1=Sunday, so names are used) cover summer and winter time;
   // only the one that lands on 10:xx Prague time posts.
   async scheduled(event, env, ctx) {
-    const hour = pragueHour(new Date(event.scheduledTime));
-    if (hour !== 10) {
-      console.log(`Prague hour is ${hour}, not 10, skipping`);
+    const when = new Date(event.scheduledTime);
+    const day = pragueWeekday(when);
+    const hour = pragueHour(when);
+    if (!POST_DAYS.includes(day) || hour !== 10) {
+      console.log(`Prague time is ${day} ${hour}:xx, not Mon-Thu 10:xx, skipping`);
       return;
     }
     ctx.waitUntil(pickAndPost(env));
