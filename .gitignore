@@ -1,3 +1,5 @@
 .picker-state.json
 team.json
 .serena/
+worker/.wrangler/
+node_modules/
